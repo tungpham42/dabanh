@@ -2,11 +2,24 @@ import React, { useEffect, useState } from "react";
 import { Container, Card, Row, Col, Spinner, Accordion } from "react-bootstrap";
 import leagues from "./data/leagues";
 
-const API_KEY = "3"; // Replace with your API key
+const API_KEY = "3"; // Replace with your actual API key
 
 function App() {
   const [leagueResults, setLeagueResults] = useState({});
   const [loading, setLoading] = useState(true);
+
+  // Helper to fetch team badge/logo
+  const fetchTeamBadge = async (teamName) => {
+    try {
+      const res = await fetch(
+        `https://www.thesportsdb.com/api/v1/json/${API_KEY}/searchteams.php?t=${teamName}`
+      );
+      const data = await res.json();
+      return data.teams?.[0]?.strTeamBadge || "";
+    } catch {
+      return "";
+    }
+  };
 
   useEffect(() => {
     const fetchAllResults = async () => {
@@ -18,7 +31,18 @@ function App() {
             `https://www.thesportsdb.com/api/v1/json/${API_KEY}/eventspastleague.php?id=${league.id}`
           );
           const data = await res.json();
-          results[league.name] = data.events || [];
+          const events = data.events?.slice(0, 10) || [];
+
+          // Enrich events with team badges
+          const enrichedEvents = await Promise.all(
+            events.map(async (event) => ({
+              ...event,
+              homeBadge: await fetchTeamBadge(event.strHomeTeam),
+              awayBadge: await fetchTeamBadge(event.strAwayTeam),
+            }))
+          );
+
+          results[league.name] = enrichedEvents;
         } catch (err) {
           console.error(`Error fetching ${league.name}`, err);
           results[league.name] = [];
@@ -46,7 +70,7 @@ function App() {
               <Accordion.Header>{leagueName}</Accordion.Header>
               <Accordion.Body>
                 <Row>
-                  {events.slice(0, 10).map((event) => (
+                  {events.map((event) => (
                     <Col md={6} lg={4} key={event.idEvent} className="mb-4">
                       <Card>
                         <Card.Body>
@@ -54,9 +78,32 @@ function App() {
                           <Card.Subtitle className="mb-2 text-muted">
                             {event.dateEvent}
                           </Card.Subtitle>
-                          <Card.Text>
-                            {event.strHomeTeam} {event.intHomeScore} -{" "}
-                            {event.intAwayScore} {event.strAwayTeam}
+                          <Card.Text className="d-flex align-items-center justify-content-between">
+                            <span className="d-flex align-items-center">
+                              {event.homeBadge && (
+                                <img
+                                  src={event.homeBadge}
+                                  alt=""
+                                  height="20"
+                                  className="me-2"
+                                />
+                              )}
+                              {event.strHomeTeam}
+                            </span>
+                            <strong>
+                              {event.intHomeScore} - {event.intAwayScore}
+                            </strong>
+                            <span className="d-flex align-items-center">
+                              {event.strAwayTeam}
+                              {event.awayBadge && (
+                                <img
+                                  src={event.awayBadge}
+                                  alt=""
+                                  height="20"
+                                  className="ms-2"
+                                />
+                              )}
+                            </span>
                           </Card.Text>
                         </Card.Body>
                       </Card>

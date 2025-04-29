@@ -1,4 +1,6 @@
 const leagues = [
+  { id: "4480", name: "UEFA Champions League" },
+  { id: "4481", name: "UEFA Europa League" },
   { id: "4328", name: "English Premier League" },
   { id: "4335", name: "Spanish La Liga" },
   { id: "4331", name: "Italian Serie A" },
